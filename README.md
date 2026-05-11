@@ -10,6 +10,6 @@ Click the **Ask Breezy** button in the bottom-right corner to open the chatbot a
 
 ## Contents
 
-- **Part 1**: Fixed FAQ accordion bug → [`Part-1/breezy-intern-test.html`](Part-1/breezy-intern-test.html)
-- **Part 2**: AI-Powered Chatbot + Air Blend Quiz → [`Part-2/`](Part-2/) (see [README](Part-2/README.md))
+- **Part 1**: Fixed FAQ accordion bug → [`Part-1/breezy-intern-test.html`](part-1/breezy-intern-test.html)
+- **Part 2**: AI-Powered Chatbot + Air Blend Quiz → [`part-2/`](part-2/) (see [README](part-2/README.md))
 - **Process write-up** for both parts → [`PROCESS.md`](PROCESS.md)

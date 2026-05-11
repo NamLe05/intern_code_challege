@@ -19,7 +19,7 @@ To further verify, I used Claude Code to audit my solution for correctness and s
 
 ### AI Transcript
 
-![Part 1 AI transcript](Part-1/part1-transcript.png)
+![Part 1 AI transcript](part-1/part-1-transcript.png)
 
 ### Explanation
 
@@ -59,4 +59,4 @@ I skipped rate limiting and the origin/referer guard. The Google Cloud budget ca
 
 ### AI Transcript
 
-Full transcript: [`Part-2/transcript.md`](Part-2/transcript.md)
+Full transcript: [`part-2/transcript.md`](part-2/transcript.md)
