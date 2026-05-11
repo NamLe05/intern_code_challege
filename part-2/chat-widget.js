@@ -2,8 +2,11 @@
   'use strict';
 
   const API_PATH = '/api/chat';
-  const STORAGE_KEY = 'breezy.lastBlend';
+  const BLEND_KEY = 'breezy.lastBlend';
+  const CHAT_KEY = 'breezy.chat';
   const AUTO_ADVANCE_MS = 320;
+  const MAX_CHAT_MESSAGES = 20;
+  const MAX_CHAT_CONTENT = 500;
 
   const QUESTIONS = [
     {
@@ -59,18 +62,37 @@
     },
   ];
 
+  const WELCOME_TEXT = [
+    "Hey, it's Breezy.",
+    "Ask me anything — preferably air-adjacent.",
+  ];
+
+  const STARTER_CHIPS = [
+    "How does delivery actually work?",
+    "Which plan should I pretend I need?",
+    "Are you serious about all of this?",
+  ];
+
   const state = {
     open: false,
+    view: 'chat',          // 'chat' | 'quiz' | 'loading' | 'result' | 'error'
+    // quiz
     step: 0,
     answers: {},
-    view: 'quiz', // 'quiz' | 'loading' | 'result' | 'error'
+    // blend
     blend: null,
     degraded: false,
+    // chat
+    messages: [],          // [{ role: 'user'|'assistant', content, error? }]
+    chatLoading: false,
+    // quiz error
     error: null,
   };
 
   let root;
   let advanceTimer = null;
+
+  /* ── Lifecycle ── */
 
   function init() {
     if (document.getElementById('breezy-quiz-root')) return;
@@ -79,11 +101,14 @@
     root.id = 'breezy-quiz-root';
     document.body.appendChild(root);
 
-    const saved = readSavedBlend();
-    if (saved && saved.blend) {
-      state.blend = saved.blend;
-      state.degraded = !!saved.degraded;
-      state.view = 'result';
+    const savedBlend = readSavedBlend();
+    if (savedBlend && savedBlend.blend) {
+      state.blend = savedBlend.blend;
+      state.degraded = !!savedBlend.degraded;
+    }
+    const savedChat = readSavedChat();
+    if (savedChat && savedChat.length) {
+      state.messages = savedChat.slice(-MAX_CHAT_MESSAGES);
     }
 
     document.addEventListener('keydown', (e) => {
@@ -93,26 +118,84 @@
     render();
   }
 
+  /* ── localStorage helpers ── */
+
   function readSavedBlend() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(BLEND_KEY);
       return raw ? JSON.parse(raw) : null;
     } catch { return null; }
   }
 
   function saveBlend(blend, degraded) {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ blend, degraded }));
-    } catch { /* localStorage may be disabled — silently ignore */ }
+      localStorage.setItem(BLEND_KEY, JSON.stringify({ blend, degraded }));
+    } catch {}
   }
 
-  function clearSavedBlend() {
-    try { localStorage.removeItem(STORAGE_KEY); } catch {}
+  function readSavedChat() {
+    try {
+      const raw = localStorage.getItem(CHAT_KEY);
+      if (!raw) return null;
+      const arr = JSON.parse(raw);
+      if (!Array.isArray(arr)) return null;
+      return arr.filter((m) =>
+        m && typeof m === 'object'
+        && (m.role === 'user' || m.role === 'assistant')
+        && typeof m.content === 'string'
+        && m.content.length > 0
+      );
+    } catch { return null; }
   }
+
+  function saveChat() {
+    try {
+      const serializable = state.messages
+        .slice(-MAX_CHAT_MESSAGES)
+        .map(({ role, content }) => ({ role, content }));
+      localStorage.setItem(CHAT_KEY, JSON.stringify(serializable));
+    } catch {}
+  }
+
+  function clearSavedChat() {
+    try { localStorage.removeItem(CHAT_KEY); } catch {}
+  }
+
+  /* ── Panel open/close ── */
 
   function openPanel() {
     state.open = true;
-    if (!state.blend) {
+    render();
+    focusFirstControl();
+  }
+
+  function closePanel() {
+    state.open = false;
+    if (advanceTimer) { clearTimeout(advanceTimer); advanceTimer = null; }
+    // Reset to chat view + wipe quiz progress; keep messages and blend.
+    state.view = 'chat';
+    state.step = 0;
+    state.answers = {};
+    state.error = null;
+    render();
+  }
+
+  /* ── View transitions ── */
+
+  function backToChat() {
+    if (advanceTimer) { clearTimeout(advanceTimer); advanceTimer = null; }
+    state.view = 'chat';
+    state.step = 0;
+    state.answers = {};
+    state.error = null;
+    render();
+    focusFirstControl();
+  }
+
+  function toggleBlendView() {
+    if (state.blend) {
+      state.view = 'result';
+    } else {
       state.view = 'quiz';
       state.step = 0;
       state.answers = {};
@@ -121,24 +204,18 @@
     focusFirstControl();
   }
 
-  function closePanel() {
-    state.open = false;
-    if (advanceTimer) { clearTimeout(advanceTimer); advanceTimer = null; }
-    render();
-  }
-
-  function restart() {
+  function retakeQuiz() {
     if (advanceTimer) { clearTimeout(advanceTimer); advanceTimer = null; }
     state.view = 'quiz';
     state.step = 0;
     state.answers = {};
-    state.blend = null;
-    state.degraded = false;
     state.error = null;
-    clearSavedBlend();
+    // Keep existing blend in localStorage until a new one overwrites it.
     render();
     focusFirstControl();
   }
+
+  /* ── Quiz behavior ── */
 
   function selectChoice(key, value) {
     state.answers[key] = value;
@@ -175,9 +252,7 @@
     if (primary) primary.disabled = !canAdvance();
   }
 
-  function setText(key, value) {
-    state.answers[key] = value;
-  }
+  function setText(key, value) { state.answers[key] = value; }
 
   function goBack() {
     if (advanceTimer) { clearTimeout(advanceTimer); advanceTimer = null; }
@@ -221,32 +296,118 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode: 'quiz', quizAnswers: state.answers }),
       });
-
       const data = await res.json().catch(() => null);
 
       if (!res.ok && res.status !== 502) {
         throw new Error((data && data.error) || `Request failed (${res.status})`);
       }
-      if (!data || !data.blend) {
-        throw new Error('Unexpected response from server.');
-      }
+      if (!data || !data.blend) throw new Error('Unexpected response from server.');
 
       state.blend = data.blend;
       state.degraded = !!data.degraded;
-      state.view = 'result';
       saveBlend(state.blend, state.degraded);
-      render();
+      // Only surface if the user is still waiting on the loading screen.
+      if (state.view === 'loading') {
+        state.view = 'result';
+        render();
+      }
     } catch (err) {
+      if (state.view !== 'loading') return;
       state.error = err && err.message ? err.message : 'Something went wrong.';
       state.view = 'error';
       render();
     }
   }
 
-  /* ── Rendering ── */
+  /* ── Chat behavior ── */
+
+  async function sendMessage(rawText) {
+    const text = (rawText || '').trim();
+    if (!text || state.chatLoading) return;
+    if (text.length > MAX_CHAT_CONTENT) return;
+
+    state.messages.push({ role: 'user', content: text });
+    state.chatLoading = true;
+    saveChat();
+    render();
+
+    // Snapshot the conversation length used for this request — if the user
+    // clears chat mid-flight, the snapshot won't match and we'll bail.
+    const sentSnapshot = state.messages.length;
+
+    try {
+      const res = await fetch(API_PATH, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'chat',
+          messages: state.messages
+            .slice(-MAX_CHAT_MESSAGES)
+            .map(({ role, content }) => ({ role, content })),
+          blend: state.blend || undefined,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+
+      // User cleared chat or otherwise canceled
+      if (state.messages.length < sentSnapshot || !state.chatLoading) return;
+
+      if (!res.ok && res.status !== 502) {
+        throw new Error((data && data.error) || `Request failed (${res.status})`);
+      }
+      if (!data || typeof data.reply !== 'string') {
+        throw new Error('No reply received.');
+      }
+
+      state.messages.push({ role: 'assistant', content: data.reply });
+      state.chatLoading = false;
+      saveChat();
+      render();
+    } catch (err) {
+      if (state.messages.length < sentSnapshot || !state.chatLoading) return;
+      state.messages.push({
+        role: 'assistant',
+        content: "Our oxygen briefly cut out. Try that again.",
+        error: true,
+      });
+      state.chatLoading = false;
+      saveChat();
+      render();
+    }
+  }
+
+  function retryLastSend() {
+    // Drop the last assistant error bubble, find the preceding user message, re-send.
+    for (let i = state.messages.length - 1; i >= 0; i--) {
+      const m = state.messages[i];
+      if (m.role === 'assistant' && m.error) {
+        state.messages.splice(i, 1);
+        // The user message before it is the one to retry
+        const lastUser = [...state.messages].reverse().find((x) => x.role === 'user');
+        if (!lastUser) { render(); return; }
+        // Remove that user message too — sendMessage will re-push it.
+        const lastUserIdx = state.messages.lastIndexOf(lastUser);
+        if (lastUserIdx >= 0) state.messages.splice(lastUserIdx, 1);
+        saveChat();
+        sendMessage(lastUser.content);
+        return;
+      }
+    }
+  }
+
+  function clearChat() {
+    state.messages = [];
+    state.chatLoading = false;
+    clearSavedChat();
+    render();
+    focusFirstControl();
+  }
+
+  /* ── Render orchestration ── */
 
   function render() {
     if (!root) return;
+
     let fab = root.querySelector('.bq-fab');
     if (!fab) {
       fab = createFab();
@@ -265,16 +426,23 @@
       panel.innerHTML = '';
       fillPanel(panel);
     }
+
+    // Post-render side effects
+    if (state.open && state.view === 'chat') {
+      const msgs = root.querySelector('.bq-chat-messages');
+      if (msgs) msgs.scrollTop = msgs.scrollHeight;
+    }
   }
 
   function createFab() {
     const fab = el('button', {
       class: 'bq-fab',
       type: 'button',
+      'aria-label': 'Ask Breezy',
     }, [
       el('span', { class: 'bq-fab-pulse', 'aria-hidden': 'true' }),
       el('span', { class: 'bq-fab-icon', 'aria-hidden': 'true' }, ['💨']),
-      el('span', { class: 'bq-fab-label' }, ['']),
+      el('span', { class: 'bq-fab-label' }, ['Ask Breezy']),
     ]);
     fab.addEventListener('click', openPanel);
     updateFab(fab);
@@ -282,14 +450,7 @@
   }
 
   function updateFab(fab) {
-    const hasBlend = !!state.blend;
     fab.classList.toggle('bq-fab--hidden', state.open);
-    fab.setAttribute(
-      'aria-label',
-      hasBlend ? 'Open your Air Blend' : 'Take the quiz to find your Air Blend'
-    );
-    const label = fab.querySelector('.bq-fab-label');
-    if (label) label.textContent = hasBlend ? 'Your Air Blend' : 'Find Your Blend';
   }
 
   function createPanel() {
@@ -297,7 +458,7 @@
       class: 'bq-panel',
       role: 'dialog',
       'aria-modal': 'true',
-      'aria-label': 'Air Blend Quiz',
+      'aria-label': 'Breezy Concierge',
     });
     fillPanel(panel);
     return panel;
@@ -306,7 +467,9 @@
   function fillPanel(panel) {
     panel.appendChild(renderHeader());
 
-    if (state.view === 'quiz') {
+    if (state.view === 'chat') {
+      panel.appendChild(renderChat());
+    } else if (state.view === 'quiz') {
       panel.appendChild(renderProgress());
       panel.appendChild(renderQuiz());
       panel.appendChild(renderFooter());
@@ -319,32 +482,62 @@
     }
   }
 
+  /* ── Header ── */
+
   function renderHeader() {
     let eyebrow, title, subtitle;
-    if (state.view === 'result') {
-      eyebrow = 'Hand-curated';
+    if (state.view === 'chat') {
+      eyebrow = 'Breezy support';
+      title   = 'Ask Breezy';
+      subtitle = 'Probably more useful than your group chat.';
+    } else if (state.view === 'result') {
+      eyebrow = 'Your blend';
       title   = 'Your Air Blend';
-      subtitle = 'Probably more accurate than your horoscope.';
+      subtitle = 'We made this for you. From the sky.';
     } else if (state.view === 'loading') {
-      eyebrow = 'Curating';
-      title   = 'One moment';
-      subtitle = 'Our Air Sommeliers are pretending to think.';
+      eyebrow = 'One sec';
+      title   = 'Mixing your air';
+      subtitle = 'Pretending to think real hard.';
     } else if (state.view === 'error') {
       eyebrow = 'Hiccup';
       title   = 'Slight turbulence';
       subtitle = 'The air is fine. The system, less so.';
     } else {
-      eyebrow = 'Air Sommelier';
+      eyebrow = 'Quiz';
       title   = 'Find Your Blend';
       subtitle = 'A short, mildly nosy questionnaire.';
     }
 
+    const icons = el('div', { class: 'bq-header-icons' });
+
+    if (state.view === 'chat' && state.messages.length > 0) {
+      const clearBtn = el('button', {
+        class: 'bq-icon-btn',
+        type: 'button',
+        title: 'Clear conversation',
+        'aria-label': 'Clear conversation',
+      }, [resetIcon()]);
+      clearBtn.addEventListener('click', clearChat);
+      icons.appendChild(clearBtn);
+    } else if (state.view !== 'chat') {
+      const backBtn = el('button', {
+        class: 'bq-icon-btn',
+        type: 'button',
+        title: 'Back to chat',
+        'aria-label': 'Back to chat',
+      }, [backIcon()]);
+      backBtn.addEventListener('click', backToChat);
+      icons.appendChild(backBtn);
+    }
+
     const closeBtn = el('button', {
-      class: 'bq-close',
+      class: 'bq-icon-btn bq-close',
       type: 'button',
       'aria-label': 'Close',
+      title: 'Close',
     }, ['×']);
     closeBtn.addEventListener('click', closePanel);
+    icons.appendChild(closeBtn);
 
     return el('div', { class: 'bq-header' }, [
       el('div', { class: 'bq-header-text' }, [
@@ -352,9 +545,179 @@
         el('div', { class: 'bq-title' }, [title]),
         el('div', { class: 'bq-subtitle' }, [subtitle]),
       ]),
-      closeBtn,
+      icons,
     ]);
   }
+
+  function backIcon() {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('width', '18');
+    svg.setAttribute('height', '18');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '2.2');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    svg.innerHTML = '<path d="M15 18l-6-6 6-6"/>';
+    return svg;
+  }
+  function resetIcon() {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('width', '16');
+    svg.setAttribute('height', '16');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '2.2');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    svg.innerHTML = '<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>';
+    return svg;
+  }
+  function sendIcon() {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('width', '18');
+    svg.setAttribute('height', '18');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '2.4');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    svg.innerHTML = '<path d="M12 19V5"/><path d="M5 12l7-7 7 7"/>';
+    return svg;
+  }
+
+  /* ── Chat view ── */
+
+  function renderChat() {
+    const wrap = el('div', { class: 'bq-chat' });
+    const messages = el('div', { class: 'bq-chat-messages' });
+
+    if (state.messages.length === 0) {
+      messages.appendChild(renderWelcome());
+      messages.appendChild(renderChips());
+    } else {
+      state.messages.forEach((m) => {
+        messages.appendChild(renderBubble(m));
+      });
+    }
+
+    if (state.chatLoading) {
+      messages.appendChild(renderTypingBubble());
+    }
+
+    wrap.appendChild(messages);
+    wrap.appendChild(renderBlendToggle());
+    wrap.appendChild(renderInputRow());
+    return wrap;
+  }
+
+  function renderWelcome() {
+    return el('div', { class: 'bq-welcome' }, [
+      el('strong', {}, [WELCOME_TEXT[0]]),
+      ' ',
+      WELCOME_TEXT[1],
+    ]);
+  }
+
+  function renderChips() {
+    const wrap = el('div', { class: 'bq-chips' });
+    STARTER_CHIPS.forEach((text) => {
+      const chip = el('button', {
+        class: 'bq-chip',
+        type: 'button',
+      }, [text]);
+      chip.addEventListener('click', () => sendMessage(text));
+      wrap.appendChild(chip);
+    });
+    return wrap;
+  }
+
+  function renderBubble(m) {
+    const cls = ['bq-bubble'];
+    if (m.role === 'user') cls.push('bq-bubble--user');
+    else cls.push('bq-bubble--bot');
+    if (m.error) cls.push('bq-bubble--error');
+
+    const children = [el('div', { class: 'bq-bubble-text' }, [m.content])];
+
+    if (m.error) {
+      const retry = el('button', {
+        class: 'bq-bubble-retry',
+        type: 'button',
+      }, ['↻ Retry']);
+      retry.addEventListener('click', retryLastSend);
+      children.push(retry);
+    }
+
+    return el('div', { class: cls.join(' ') }, children);
+  }
+
+  function renderTypingBubble() {
+    return el('div', { class: 'bq-typing', 'aria-label': 'Breezy is typing' }, [
+      el('span', { class: 'bq-typing-dot' }),
+      el('span', { class: 'bq-typing-dot' }),
+      el('span', { class: 'bq-typing-dot' }),
+    ]);
+  }
+
+  function renderBlendToggle() {
+    const hasBlend = !!state.blend;
+    const variant = hasBlend ? 'bq-blend-toggle--view' : 'bq-blend-toggle--find';
+    const btn = el('button', {
+      class: `bq-blend-toggle ${variant}`,
+      type: 'button',
+    }, [
+      el('span', { class: 'bq-blend-toggle-icon', 'aria-hidden': 'true' }, [hasBlend ? '✓' : '✨']),
+      hasBlend ? 'View Your Blend' : 'Find Your Blend',
+    ]);
+    btn.addEventListener('click', toggleBlendView);
+    return btn;
+  }
+
+  function renderInputRow() {
+    const ta = el('textarea', {
+      class: 'bq-chat-textarea',
+      placeholder: 'Ask about the air, the plans, the lifestyle…',
+      rows: '1',
+      maxlength: String(MAX_CHAT_CONTENT),
+      'aria-label': 'Message Breezy',
+    });
+
+    const sendBtn = el('button', {
+      class: 'bq-send',
+      type: 'button',
+      'aria-label': 'Send',
+      title: 'Send',
+    }, [sendIcon()]);
+    sendBtn.disabled = true;
+
+    const setDisabled = () => {
+      sendBtn.disabled = ta.value.trim().length === 0 || state.chatLoading;
+    };
+
+    const submit = () => {
+      const text = ta.value;
+      ta.value = '';
+      setDisabled();
+      sendMessage(text);
+    };
+
+    ta.addEventListener('input', setDisabled);
+    ta.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        if (!sendBtn.disabled) submit();
+      }
+    });
+    sendBtn.addEventListener('click', () => { if (!sendBtn.disabled) submit(); });
+
+    return el('div', { class: 'bq-input-row' }, [ta, sendBtn]);
+  }
+
+  /* ── Quiz views (unchanged from prior) ── */
 
   function renderProgress() {
     const dots = QUESTIONS.map((_, i) => {
@@ -472,7 +835,7 @@
       class: 'bq-btn bq-btn--ghost',
       type: 'button',
     }, ['Retake']);
-    restartBtn.addEventListener('click', restart);
+    restartBtn.addEventListener('click', retakeQuiz);
 
     const children = [
       el('div', { class: 'bq-result-eyebrow' }, ['Your personalized blend']),
@@ -493,7 +856,7 @@
 
     if (state.degraded) {
       children.push(el('div', { class: 'bq-degraded-note' }, [
-        'House Reserve served — our sommelier briefly stepped out.',
+        'Standard Issue served — our system briefly stepped out.',
       ]));
     }
 
@@ -509,19 +872,13 @@
     }, ['Try again']);
     retryBtn.addEventListener('click', submitQuiz);
 
-    const startOverBtn = el('button', {
-      class: 'bq-btn bq-btn--ghost',
-      type: 'button',
-    }, ['Start over']);
-    startOverBtn.addEventListener('click', restart);
-
     return el('div', { class: 'bq-error' }, [
       el('div', { class: 'bq-error-icon', 'aria-hidden': 'true' }, ['⚠']),
       el('div', { class: 'bq-error-title' }, ['The air thinned briefly']),
       el('div', { class: 'bq-error-message' }, [
         state.error || 'Something went wrong on our end.',
       ]),
-      el('div', { class: 'bq-result-actions', style: 'margin-top: 8px;' }, [startOverBtn, retryBtn]),
+      el('div', { class: 'bq-result-actions', style: 'margin-top: 8px;' }, [retryBtn]),
     ]);
   }
 
@@ -529,6 +886,10 @@
     setTimeout(() => {
       const panel = document.querySelector('.bq-panel');
       if (!panel) return;
+      if (state.view === 'chat') {
+        const ta = panel.querySelector('.bq-chat-textarea');
+        if (ta) { ta.focus({ preventScroll: true }); return; }
+      }
       const target = panel.querySelector('.bq-option, .bq-textarea, .bq-btn--primary, .bq-close');
       if (target) target.focus({ preventScroll: true });
     }, 60);
