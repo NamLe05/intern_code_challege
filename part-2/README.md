@@ -1,62 +1,39 @@
-# Breezy Intern Challenge
+# Breezy AI-Powered Chatbot + Air Blend Quiz
 
-Backend serverless function for the Breezy AI quiz feature. Takes quiz answers, calls Gemini, returns a personalized Air Blend.
+## What I built and why
 
-## Local dev
+A floating chat widget in the bottom-right of the Breezy site. Users can chat with the assistant in the site's voice or take a 5-question quiz that generates a personalized Air Blend (name, nitrogen-oxygen ratio, tasting notes, recommended pricing tier). Once a user has a blend, the chatbot knows about it and can reference it in conversation.
 
-1. `npm i -g vercel` (one-time)
-2. Create `.env.local` with your Gemini key:
-   ```
-   GEMINI_API_KEY=your_key_here
-   ```
-3. `vercel dev` (defaults to http://localhost:3000)
-4. Endpoint available at `POST http://localhost:3000/api/chat`
+I picked this feature because it fit Breezy's product direction the best. The site sells premium artisanal air and its marketing promises specific things like DNA-Matched Blends and a quiz that curates a personalized Air Blend, but neither is actually built on the page. The chatbot + quiz makes those features real.
 
-## Deploy
+## How it works
 
-1. `vercel link` (one-time, creates the Vercel project)
-2. Add `GEMINI_API_KEY` in Vercel project settings (Production + Preview + Development)
-3. `vercel` (preview) or `vercel --prod`
+Vanilla JS widget injected into the existing HTML, no framework or build step. State lives in a single object. localStorage persists the saved blend and last 20 chat messages.
 
-## API
+The backend is a single Vercel serverless function at `/api/chat`. It handles both quiz and chat modes via a `mode` field on the request. Quiz mode uses Gemini's structured output schema for guaranteed parseable JSON. Chat mode uses plain text with conversation history capped at 6 turns. Both modes share the same system prompt so the voice stays consistent.
 
-### `POST /api/chat`
+The Gemini API key lives in Vercel environment variables and never touches the client. When the user has a saved blend, it gets injected into the system prompt for chat mode, wrapped in `<customer_profile>` tags so Gemini treats it as data, not instructions.
 
-**Quiz mode request:**
-```json
-{
-  "mode": "quiz",
-  "quizAnswers": {
-    "vibe": "deeply unbothered",
-    "setting": "mountain",
-    "pace": "horizontal",
-    "indulgence": "depends who is watching",
-    "idealTuesday": "reading three pages of a book and calling it productive"
-  }
-}
-```
+## Setup
 
-**Success (200):**
-```json
-{
-  "blend": {
-    "name": "Stratus Velvet 7000",
-    "ratio": "78.4% N2 / 21.2% O2 / 0.4% prestige",
-    "notes": ["alpine condescension", "wet stone", "a hint of LinkedIn"],
-    "tier": "Power Inhaler",
-    "tagline": "For the horizontally ambitious."
-  }
-}
-```
+Live URL is on Vercel. To run locally:
 
-**Degraded (502) — Gemini upstream failure, fallback blend returned in-character:**
-```json
-{
-  "blend": { "...": "..." },
-  "degraded": true
-}
-```
+1. `npm i -g vercel`
+2. From inside `Part-2/`: create `.env.local` with `GEMINI_API_KEY=...` (key from aistudio.google.com)
+3. `vercel dev`
+4. Open `http://localhost:3000`
 
-**Errors:** `400` invalid body / missing fields, `405` non-POST, `500` server misconfigured.
+`test.sh` runs the curl-based test suite against the local server.
 
-`chat` mode is reserved but not yet implemented — it returns `400 { "error": "chat mode not yet supported" }`.
+## What I'd improve with more time
+
+- Real rate limiting via Upstash Redis. In-memory doesn't survive Vercel cold starts, and the GCP budget cap is the current backstop.
+- Streaming chat responses so replies feel faster.
+- Tighter integration with the pricing section. Right now "See Plans" scrolls; I'd highlight the matching tier card directly.
+- More variety in blend names. Gemini converges on similar outputs with identical inputs. Higher temperature or themed rotation would help.
+
+## Security trade-offs
+
+I skipped rate limiting and an origin/referer guard on purpose. In-memory rate limiting doesn't work on Vercel because cold starts wipe state, and Upstash Redis is overhead disproportionate to a single-URL demo. The Google Cloud budget cap is the real backstop. An origin guard would be theater since anyone bypasses it with curl.
+
+What I did add: 16KB body cap, 20-message conversation cap, 500-char per-message cap, blend field length caps, newline sanitization on blend strings before they're interpolated into the system prompt (prevents prompt injection), and two anti-jailbreak clauses in the system prompt.
