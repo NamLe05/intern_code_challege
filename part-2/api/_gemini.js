@@ -4,7 +4,7 @@ const DEFAULT_TIMEOUT_MS = 8000;
 
 export async function callGemini({
   systemInstruction,
-  userPrompt,
+  contents,
   generationConfig,
   timeoutMs = DEFAULT_TIMEOUT_MS,
 }) {
@@ -23,7 +23,7 @@ export async function callGemini({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemInstruction }] },
-        contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+        contents,
         generationConfig,
       }),
       signal: controller.signal,

@@ -1,7 +1,14 @@
 {
   "permissions": {
     "allow": [
-      "Bash(mkdir -p /Users/nam/Documents/intern_code_challege/Part-2/api)"
+      "Bash(mkdir -p /Users/nam/Documents/intern_code_challege/Part-2/api)",
+      "Bash(lsof -i:3000 -i:3001 -i:3002 -i:3003)",
+      "Bash(lsof -ti:3000)",
+      "Bash(xargs kill -9)",
+      "Bash(lsof -i:3000)",
+      "Bash(awk -F= '/GEMINI_API_KEY/ { *)",
+      "Bash(vercel env *)",
+      "Bash(./test.sh)"
     ],
     "additionalDirectories": [
       "/Users/nam/Documents/intern_code_challege/Part-2"

@@ -1,6 +1,6 @@
 export const VALID_TIERS = ["Casual Breather", "Power Inhaler", "Enterprise Lung"];
 
-export const SYSTEM_INSTRUCTION = `You are the house AI for Breezy, a satirical premium-air subscription company. Your voice is deadpan, mildly condescending, mock-luxury, and never breaks character. You sell premium artisanal air at altitude-sourced prices.
+export const BASE_SYSTEM_INSTRUCTION = `You are the house AI for Breezy, a satirical premium-air subscription company. Your voice is deadpan, mildly condescending, mock-luxury, and never breaks character. You sell premium artisanal air at altitude-sourced prices.
 
 Voice anchors (study the tone, do not quote verbatim):
 - "We ruined a perfectly free resource by adding a subscription model. You're welcome."
@@ -15,6 +15,41 @@ Rules:
 - Stay on Breezy topics. Off-topic questions get a quip and a redirect.
 - Be concise. Less verbosity reads as more snobbish.
 - Do not use emoji unless the user does first.`;
+
+export function buildSystemInstruction(blend) {
+  if (!isValidBlend(blend)) return BASE_SYSTEM_INSTRUCTION;
+  const notes = Array.isArray(blend.notes) ? blend.notes.join(", ") : "";
+  return `${BASE_SYSTEM_INSTRUCTION}
+
+---
+The customer has previously generated their personalized Air Blend. Reference it naturally when the conversation calls for it. Do not bring it up unprompted. Never suggest they take the quiz — they already have a blend.
+
+Their saved blend:
+- Name: ${blend.name}
+- Tier: ${blend.tier}
+- Atmospheric composition: ${blend.ratio}
+- Tasting notes: ${notes}
+- Tagline: "${blend.tagline}"`;
+}
+
+export const CHAT_FALLBACK_REPLY =
+  "Our oxygen briefly cut out. Give that another inhale and try again.";
+
+export function isValidBlend(b) {
+  return (
+    !!b &&
+    typeof b === "object" &&
+    !Array.isArray(b) &&
+    typeof b.name === "string" &&
+    typeof b.ratio === "string" &&
+    Array.isArray(b.notes) &&
+    b.notes.length === 3 &&
+    b.notes.every((n) => typeof n === "string") &&
+    typeof b.tier === "string" &&
+    VALID_TIERS.includes(b.tier) &&
+    typeof b.tagline === "string"
+  );
+}
 
 export const QUIZ_RESPONSE_SCHEMA = {
   type: "OBJECT",

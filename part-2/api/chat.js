@@ -1,19 +1,24 @@
 import { callGemini } from "./_gemini.js";
 import {
-  SYSTEM_INSTRUCTION,
+  buildSystemInstruction,
   buildQuizPrompt,
   QUIZ_RESPONSE_SCHEMA,
   FALLBACK_BLEND,
-  VALID_TIERS,
+  CHAT_FALLBACK_REPLY,
+  isValidBlend,
 } from "./_prompt.js";
 
 export const config = {
   api: { bodyParser: false },
 };
 
-const MAX_BODY_BYTES = 4096;
+const MAX_BODY_BYTES = 16 * 1024;
 const MAX_FIELD_LENGTH = 200;
 const REQUIRED_ANSWER_KEYS = ["vibe", "setting", "pace", "indulgence", "idealTuesday"];
+
+const MAX_CHAT_MESSAGES = 20;
+const MAX_CHAT_CONTENT_LENGTH = 500;
+const VALID_CHAT_ROLES = new Set(["user", "assistant"]);
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -38,14 +43,17 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Invalid JSON body" });
   }
 
-  const { mode } = body;
-  if (mode === "chat") {
-    return res.status(400).json({ error: "chat mode not yet supported" });
-  }
-  if (mode !== "quiz") {
-    return res.status(400).json({ error: "mode must be 'quiz' or 'chat'" });
+  if (!process.env.GEMINI_API_KEY) {
+    return res.status(500).json({ error: "Server misconfigured" });
   }
 
+  const { mode } = body;
+  if (mode === "quiz") return handleQuiz(res, body);
+  if (mode === "chat") return handleChat(res, body);
+  return res.status(400).json({ error: "mode must be 'quiz' or 'chat'" });
+}
+
+async function handleQuiz(res, body) {
   const answers = body.quizAnswers;
   if (!answers || typeof answers !== "object" || Array.isArray(answers)) {
     return res.status(400).json({ error: "quizAnswers is required" });
@@ -67,19 +75,16 @@ export default async function handler(req, res) {
     });
   }
 
-  if (!process.env.GEMINI_API_KEY) {
-    return res.status(500).json({ error: "Server misconfigured" });
-  }
-
   try {
     const text = await callGemini({
-      systemInstruction: SYSTEM_INSTRUCTION,
-      userPrompt: buildQuizPrompt(answers),
+      systemInstruction: buildSystemInstruction(),
+      contents: [{ role: "user", parts: [{ text: buildQuizPrompt(answers) }] }],
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: QUIZ_RESPONSE_SCHEMA,
         temperature: 1.0,
         maxOutputTokens: 400,
+        thinkingConfig: { thinkingBudget: 0 },
       },
     });
 
@@ -91,6 +96,67 @@ export default async function handler(req, res) {
   } catch (err) {
     console.error("Quiz generation failed:", err?.message ?? err);
     return res.status(502).json({ blend: FALLBACK_BLEND, degraded: true });
+  }
+}
+
+async function handleChat(res, body) {
+  const { messages } = body;
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return res.status(400).json({ error: "messages must be a non-empty array" });
+  }
+
+  for (let i = 0; i < messages.length; i++) {
+    const m = messages[i];
+    if (!m || typeof m !== "object" || Array.isArray(m)) {
+      return res.status(400).json({ error: `messages[${i}] must be an object` });
+    }
+    if (!VALID_CHAT_ROLES.has(m.role)) {
+      return res.status(400).json({
+        error: `messages[${i}].role must be 'user' or 'assistant'`,
+      });
+    }
+    if (typeof m.content !== "string" || m.content.trim().length === 0) {
+      return res.status(400).json({
+        error: `messages[${i}].content must be a non-empty string`,
+      });
+    }
+    if (m.content.length > MAX_CHAT_CONTENT_LENGTH) {
+      return res.status(400).json({
+        error: `messages[${i}].content exceeds ${MAX_CHAT_CONTENT_LENGTH} chars`,
+      });
+    }
+  }
+
+  if (messages[messages.length - 1].role !== "user") {
+    return res.status(400).json({ error: "last message must be from the user" });
+  }
+
+  const trimmed = messages.slice(-MAX_CHAT_MESSAGES);
+  const contents = trimmed.map((m) => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [{ text: m.content }],
+  }));
+
+  const blendForContext = isValidBlend(body.blend) ? body.blend : null;
+  if (body.blend && !blendForContext) {
+    console.warn("Chat: ignoring malformed blend payload");
+  }
+
+  try {
+    const reply = await callGemini({
+      systemInstruction: buildSystemInstruction(blendForContext),
+      contents,
+      generationConfig: {
+        temperature: 0.9,
+        maxOutputTokens: 250,
+        thinkingConfig: { thinkingBudget: 0 },
+      },
+    });
+
+    return res.status(200).json({ reply });
+  } catch (err) {
+    console.error("Chat generation failed:", err?.message ?? err);
+    return res.status(502).json({ reply: CHAT_FALLBACK_REPLY, degraded: true });
   }
 }
 
@@ -110,18 +176,4 @@ function readBody(req) {
     req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
     req.on("error", reject);
   });
-}
-
-function isValidBlend(b) {
-  return (
-    b &&
-    typeof b.name === "string" &&
-    typeof b.ratio === "string" &&
-    Array.isArray(b.notes) &&
-    b.notes.length === 3 &&
-    b.notes.every((n) => typeof n === "string") &&
-    typeof b.tier === "string" &&
-    VALID_TIERS.includes(b.tier) &&
-    typeof b.tagline === "string"
-  );
 }
