@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Breezy</title>    <style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,700&family=Playfair+Display:wght@400;700;900&display=swap');
+
+  :root {
+    --sky-50: #f0f9ff;
+    --sky-100: #e0f2fe;
+    --sky-200: #bae6fd;
+    --sky-400: #38bdf8;
+    --sky-500: #0ea5e9;
+    --sky-600: #0284c7;
+    --sky-700: #0369a1;
+    --slate-50: #f8fafc;
+    --slate-100: #f1f5f9;
+    --slate-200: #e2e8f0;
+    --slate-300: #cbd5e1;
+    --slate-500: #64748b;
+    --slate-600: #475569;
+    --slate-700: #334155;
+    --slate-800: #1e293b;
+    --slate-900: #0f172a;
+    --amber-400: #fbbf24;
+    --amber-500: #f59e0b;
+    --emerald-400: #34d399;
+    --emerald-500: #10b981;
+    --rose-500: #f43f5e;
+    --violet-500: #8b5cf6;
+    --radius: 12px;
+    --radius-lg: 20px;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.06);
+    --shadow-lg: 0 12px 40px rgba(0,0,0,0.08);
+    --shadow-xl: 0 20px 60px rgba(0,0,0,0.1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    color: var(--slate-800);
+    background: var(--sky-50);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4 { font-family: 'Playfair Display', serif; line-height: 1.15; }
+
+  /* ── HEADER ── */
+  .header-wrap {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  }
+
+  /* Utility bar */
+  .utility-bar {
+    background: var(--slate-900);
+    display: flex; justify-content: flex-end; align-items: center;
+    padding: 0 32px; height: 36px; gap: 24px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .utility-bar a {
+    color: rgba(255,255,255,0.7); text-decoration: none;
+    font-size: 0.75rem; font-weight: 500; letter-spacing: 0.5px;
+    display: flex; align-items: center; gap: 6px;
+    transition: color 0.2s;
+  }
+  .utility-bar a:hover { color: #fff; }
+  .utility-bar .util-icon { font-size: 0.85rem; }
+
+  /* Middle bar: logo + secondary nav */
+  .mid-bar {
+    background: var(--slate-800);
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0 32px; height: 56px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .nav-brand {
+    font-family: 'Playfair Display', serif;
+    font-weight: 900; font-size: 1.5rem;
+    color: #fff; display: flex; align-items: center; gap: 8px;
+  }
+  .nav-brand em {
+    font-style: normal;
+    background: linear-gradient(135deg, var(--sky-400), var(--violet-500));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .mid-links { display: flex; align-items: center; gap: 28px; }
+  .mid-links a {
+    color: rgba(255,255,255,0.75); text-decoration: none;
+    font-size: 0.8rem; font-weight: 600; letter-spacing: 1.5px;
+    text-transform: uppercase; transition: color 0.2s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .mid-links a:hover { color: #fff; }
+  .mid-links .book-btn {
+    background: var(--sky-500); color: #fff;
+    padding: 8px 20px; border-radius: 4px;
+    transition: background 0.2s;
+  }
+  .mid-links .book-btn:hover { background: var(--sky-600); }
+
+  /* Main nav bar */
+  .main-nav {
+    background: var(--slate-700);
+    display: flex; align-items: center;
+    padding: 0 32px; height: 48px;
+    gap: 0;
+  }
+  .location-badge {
+    display: flex; align-items: center; gap: 8px;
+    margin-right: 24px; color: #fff; font-size: 0.85rem;
+    font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .location-dot {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: linear-gradient(135deg, #34d399, #0ea5e9);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.7rem;
+  }
+  .main-nav-links {
+    display: flex; align-items: center; height: 100%;
+  }
+  .main-nav-links a {
+    color: rgba(255,255,255,0.85); text-decoration: none;
+    font-size: 0.8rem; font-weight: 600; letter-spacing: 1.8px;
+    text-transform: uppercase; padding: 0 20px;
+    height: 100%; display: flex; align-items: center;
+    border-right: 1px solid rgba(255,255,255,0.12);
+    transition: background 0.2s, color 0.2s;
+    white-space: nowrap;
+  }
+  .main-nav-links a:first-child { border-left: 1px solid rgba(255,255,255,0.12); }
+  .main-nav-links a:hover { background: rgba(255,255,255,0.08); color: #fff; }
+
+  /* MORE dropdown */
+  .more-wrap { position: relative; height: 100%; }
+  .more-btn {
+    background: none; border: none; cursor: pointer;
+    color: rgba(255,255,255,0.85); font-size: 0.8rem; font-weight: 600;
+    letter-spacing: 1.8px; text-transform: uppercase; padding: 0 20px;
+    height: 100%; display: flex; align-items: center; gap: 8px;
+    border-right: 1px solid rgba(255,255,255,0.12);
+    transition: background 0.2s; font-family: inherit;
+  }
+  .more-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
+  .more-arrow { font-size: 0.6rem; transition: transform 0.2s; }
+  .more-btn.open .more-arrow { transform: rotate(180deg); }
+  .more-dropdown {
+    position: absolute; top: 100%; right: 0;
+    background: rgba(30,41,59,0.97); backdrop-filter: blur(8px);
+    min-width: 200px; padding: 8px 0;
+    opacity: 0; visibility: hidden;
+    transform: translateY(-4px);
+    transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .more-dropdown.open { opacity: 1; visibility: visible; transform: translateY(0); }
+  .more-dropdown a {
+    display: block; padding: 12px 24px; color: rgba(255,255,255,0.8);
+    text-decoration: none; font-size: 0.8rem; font-weight: 600;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    transition: background 0.15s, color 0.15s;
+  }
+  .more-dropdown a:hover { background: rgba(255,255,255,0.08); color: #fff; }
+
+  /* ── HAMBURGER (mobile) ── */
+  .hamburger {
+    display: none; background: none; border: none; cursor: pointer;
+    width: 44px; height: 44px; position: relative;
+    flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  }
+  .hamburger span {
+    display: block; width: 26px; height: 2px; background: #fff;
+    border-radius: 2px; transition: transform 0.3s, opacity 0.2s;
+  }
+  .hamburger.open span:nth-child(1) { transform: translateY(8px) rotate(45deg); }
+  .hamburger.open span:nth-child(2) { opacity: 0; }
+  .hamburger.open span:nth-child(3) { transform: translateY(-8px) rotate(-45deg); }
+
+  /* ── MOBILE MENU OVERLAY ── */
+  .mobile-menu {
+    display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--slate-900); z-index: 99;
+    flex-direction: column; align-items: center;
+    padding-top: 120px;
+    gap: 0; overflow-y: auto;
+  }
+  .mobile-menu.open { display: flex; }
+  .mobile-menu a {
+    display: block; color: #fff; text-decoration: none;
+    font-size: 1.05rem; font-weight: 600; letter-spacing: 2.5px;
+    text-transform: uppercase; padding: 18px 32px;
+    text-align: center; width: 100%; max-width: 400px;
+    transition: background 0.15s;
+  }
+  .mobile-menu a:hover { background: rgba(255,255,255,0.05); }
+  .mobile-menu .mobile-divider {
+    width: 80%; max-width: 300px; height: 1px;
+    background: rgba(255,255,255,0.1); margin: 8px auto;
+  }
+
+  /* ── RESPONSIVE NAV ── */
+  @media (max-width: 1024px) {
+    .main-nav-links, .more-wrap { display: none; }
+    .mid-links { display: none; }
+    .utility-bar { display: none; }
+    .hamburger { display: flex; }
+    .mid-bar { height: 60px; }
+    .main-nav { height: 44px; }
+    .location-badge { margin-right: 0; }
+  }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center;
+    padding: 180px 24px 80px;
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 0%, rgba(186,230,253,0.5), transparent),
+      radial-gradient(ellipse 60% 50% at 80% 80%, rgba(139,92,246,0.08), transparent),
+      var(--sky-50);
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='30' cy='30' r='1.5' fill='%230ea5e9' opacity='0.08'/%3E%3C/svg%3E");
+    pointer-events: none;
+  }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #fff; border: 1px solid var(--sky-200);
+    border-radius: 100px; padding: 6px 16px;
+    font-size: 0.8rem; font-weight: 600; color: var(--sky-700);
+    margin-bottom: 24px; box-shadow: var(--shadow-sm);
+  }
+  .badge span { display: inline-block; width: 8px; height: 8px; background: var(--emerald-400); border-radius: 50%; }
+  .hero h1 {
+    font-size: clamp(2.8rem, 6vw, 5.5rem); font-weight: 900;
+    max-width: 800px; margin-bottom: 20px;
+  }
+  .hero h1 em {
+    font-style: normal;
+    background: linear-gradient(135deg, var(--sky-500), var(--violet-500));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .hero p {
+    font-size: 1.2rem; color: var(--slate-500); max-width: 540px; margin-bottom: 36px;
+  }
+  .hero-buttons { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+  .btn {
+    padding: 14px 32px; border-radius: 100px; font-size: 1rem;
+    font-weight: 600; text-decoration: none; cursor: pointer;
+    border: none; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px;
+  }
+  .btn-primary {
+    background: var(--sky-500); color: #fff;
+    box-shadow: 0 4px 16px rgba(14,165,233,0.35);
+  }
+  .btn-primary:hover { background: var(--sky-600); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(14,165,233,0.4); }
+  .btn-secondary {
+    background: #fff; color: var(--slate-700); border: 1.5px solid var(--slate-200);
+  }
+  .btn-secondary:hover { border-color: var(--sky-300); background: var(--sky-50); }
+
+  .social-proof {
+    margin-top: 56px; display: flex; flex-direction: column; align-items: center; gap: 10px;
+  }
+  .avatars { display: flex; }
+  .avatars span {
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 2.5px solid #fff; margin-left: -10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.85rem;
+  }
+  .avatars span:first-child { margin-left: 0; }
+  .social-proof p { font-size: 0.85rem; color: var(--slate-500); }
+  .social-proof strong { color: var(--slate-800); }
+
+  /* ── LOGOS ── */
+  .logos {
+    padding: 48px 24px; text-align: center;
+    border-top: 1px solid var(--sky-100); border-bottom: 1px solid var(--sky-100);
+    background: #fff;
+  }
+  .logos p { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; color: var(--slate-400); font-weight: 600; margin-bottom: 24px; }
+  .logo-row { display: flex; justify-content: center; align-items: center; gap: 48px; flex-wrap: wrap; opacity: 0.35; }
+  .logo-row span { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 1.3rem; color: var(--slate-700); }
+
+  /* ── SECTION UTILITY ── */
+  section { padding: 96px 24px; }
+  .container { max-width: 1100px; margin: 0 auto; }
+  .section-label {
+    font-size: 0.75rem; text-transform: uppercase; letter-spacing: 2.5px;
+    color: var(--sky-500); font-weight: 700; margin-bottom: 10px;
+  }
+  .section-title { font-size: clamp(2rem, 4vw, 3rem); font-weight: 900; margin-bottom: 16px; }
+  .section-sub { font-size: 1.05rem; color: var(--slate-500); max-width: 560px; }
+
+  /* ── FEATURES ── */
+  .features { background: #fff; }
+  .features-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 24px; margin-top: 56px;
+  }
+  .feature-card {
+    background: var(--slate-50); border: 1px solid var(--slate-100);
+    border-radius: var(--radius-lg); padding: 36px 28px;
+    transition: transform 0.25s, box-shadow 0.25s; cursor: default;
+  }
+  .feature-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+  .feature-icon {
+    width: 52px; height: 52px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem; margin-bottom: 20px;
+  }
+  .feature-card h3 { font-size: 1.25rem; margin-bottom: 8px; font-weight: 700; }
+  .feature-card p { color: var(--slate-500); font-size: 0.95rem; }
+
+  /* ── HOW IT WORKS ── */
+  .how { background: var(--sky-50); }
+  .steps { display: flex; gap: 32px; margin-top: 56px; flex-wrap: wrap; justify-content: center; }
+  .step {
+    flex: 1; min-width: 220px; max-width: 300px; text-align: center;
+    position: relative; padding: 0 12px;
+  }
+  .step-num {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--sky-500), var(--violet-500));
+    color: #fff; font-weight: 700; font-size: 1.3rem;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 18px;
+    box-shadow: 0 4px 16px rgba(14,165,233,0.25);
+  }
+  .step h3 { font-size: 1.15rem; margin-bottom: 8px; }
+  .step p { font-size: 0.9rem; color: var(--slate-500); }
+
+  /* ── PRICING ── */
+  .pricing { background: #fff; }
+  .pricing-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px; margin-top: 56px;
+  }
+  .price-card {
+    border: 1.5px solid var(--slate-200); border-radius: var(--radius-lg);
+    padding: 36px 28px; position: relative; background: #fff;
+    transition: transform 0.2s;
+  }
+  .price-card:hover { transform: translateY(-3px); }
+  .price-card.popular {
+    border-color: var(--sky-400);
+    box-shadow: 0 0 0 1px var(--sky-400), var(--shadow-xl);
+  }
+  .popular-tag {
+    position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
+    background: linear-gradient(135deg, var(--sky-500), var(--violet-500));
+    color: #fff; font-size: 0.72rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1.5px;
+    padding: 4px 16px; border-radius: 100px;
+  }
+  .price-card h3 { font-size: 1.3rem; margin-bottom: 4px; }
+  .price-card .desc { font-size: 0.85rem; color: var(--slate-500); margin-bottom: 20px; }
+  .price {
+    font-family: 'Playfair Display', serif; font-size: 3rem; font-weight: 900;
+  }
+  .price sup { font-size: 1.2rem; top: -1rem; }
+  .price sub { font-size: 0.85rem; font-weight: 400; color: var(--slate-500); bottom: 0; }
+  .price-card ul { list-style: none; margin: 24px 0; }
+  .price-card li {
+    padding: 8px 0; font-size: 0.9rem; color: var(--slate-600);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .price-card li::before { content: '✓'; color: var(--emerald-500); font-weight: 700; }
+  .price-card .btn { width: 100%; justify-content: center; margin-top: 8px; }
+
+  /* ── TESTIMONIALS ── */
+  .testimonials { background: var(--slate-900); color: #fff; }
+  .testimonials .section-label { color: var(--sky-400); }
+  .testimonials .section-sub { color: var(--slate-300); }
+  .test-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 24px; margin-top: 56px;
+  }
+  .test-card {
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: var(--radius-lg); padding: 32px 24px;
+  }
+  .stars { color: var(--amber-400); font-size: 1rem; margin-bottom: 16px; letter-spacing: 2px; }
+  .test-card blockquote { font-size: 1rem; line-height: 1.7; color: var(--slate-200); margin-bottom: 20px; font-style: italic; }
+  .test-author { display: flex; align-items: center; gap: 12px; }
+  .test-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem; font-weight: 600;
+  }
+  .test-author strong { display: block; font-size: 0.9rem; }
+  .test-author span { font-size: 0.8rem; color: var(--slate-400); }
+
+  /* ── STATS ── */
+  .stats { background: linear-gradient(135deg, var(--sky-500), var(--violet-500)); color: #fff; text-align: center; padding: 72px 24px; }
+  .stats-grid { display: flex; justify-content: center; gap: 64px; flex-wrap: wrap; }
+  .stat h2 { font-size: 3.2rem; font-weight: 900; }
+  .stat p { font-size: 0.9rem; opacity: 0.85; margin-top: 4px; }
+
+  /* ── FAQ ── */
+  .faq { background: var(--sky-50); }
+  .faq-list { max-width: 680px; margin: 56px auto 0; }
+  .faq-item {
+    border-bottom: 1px solid var(--slate-200); padding: 20px 0;
+  }
+  .faq-q {
+    font-weight: 700; font-size: 1.05rem; cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center;
+    background: none; border: none; width: 100%; text-align: left;
+    font-family: inherit; color: var(--slate-800);
+  }
+  .faq-q::after { content: '+'; font-size: 1.4rem; color: var(--sky-500); transition: transform 0.2s; }
+  .faq-q.open::after { transform: rotate(45deg); }
+  .faq-a {
+    max-height: 0; overflow: hidden; transition: max-height 0.3s ease, padding 0.3s;
+    color: var(--slate-500); font-size: 0.95rem; line-height: 1.7;
+  }
+  .faq-a.open { max-height: 200px; padding-top: 12px; }
+
+  /* ── NEWSLETTER / CTA ── */
+  .newsletter {
+    background: #fff; text-align: center;
+  }
+  .nl-box {
+    background: var(--slate-900); border-radius: var(--radius-lg);
+    padding: 64px 40px; max-width: 720px; margin: 0 auto;
+    color: #fff;
+  }
+  .nl-box h2 { font-size: 2.2rem; margin-bottom: 12px; }
+  .nl-box p { color: var(--slate-300); margin-bottom: 28px; }
+  .nl-form { display: flex; gap: 10px; max-width: 440px; margin: 0 auto; }
+  .nl-form input {
+    flex: 1; padding: 14px 18px; border-radius: 100px;
+    border: 1.5px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.08); color: #fff;
+    font-size: 0.95rem; font-family: inherit; outline: none;
+    transition: border-color 0.2s;
+  }
+  .nl-form input::placeholder { color: var(--slate-400); }
+  .nl-form input:focus { border-color: var(--sky-400); }
+  .nl-form .btn-primary { white-space: nowrap; }
+
+  /* ── FOOTER ── */
+  footer {
+    background: var(--slate-900); color: var(--slate-400);
+    padding: 64px 24px 32px; border-top: 1px solid rgba(255,255,255,0.05);
+  }
+  .footer-grid {
+    max-width: 1100px; margin: 0 auto;
+    display: grid; grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 40px;
+  }
+  .footer-brand .nav-brand { font-size: 1.5rem; }
+  .footer-brand p { margin-top: 10px; font-size: 0.85rem; line-height: 1.6; max-width: 280px; }
+  footer h4 { color: #fff; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 16px; font-family: 'DM Sans', sans-serif; }
+  footer ul { list-style: none; }
+  footer li { margin-bottom: 10px; }
+  footer a { color: var(--slate-400); text-decoration: none; font-size: 0.9rem; transition: color 0.2s; }
+  footer a:hover { color: var(--sky-400); }
+  .footer-bottom {
+    max-width: 1100px; margin: 48px auto 0;
+    padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.06);
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 0.8rem; flex-wrap: wrap; gap: 12px;
+  }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 200;
+    background: var(--slate-900); color: #fff; padding: 16px 24px;
+    border-radius: var(--radius); box-shadow: var(--shadow-xl);
+    font-size: 0.9rem; transform: translateY(120%);
+    transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+  }
+  .toast.show { transform: translateY(0); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 768px) {
+    .footer-grid { grid-template-columns: 1fr 1fr; }
+    .nl-form { flex-direction: column; }
+    .stats-grid { gap: 32px; }
+  }
+</style>
+
+ 
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header-wrap">
+  <!-- Utility bar -->
+  <div class="utility-bar">
+    <a href="#"><span class="util-icon">📱</span> Breezy App</a>
+    <a href="#"><span class="util-icon">📅</span> Consultations</a>
+    <a href="#"><span class="util-icon">📞</span> 1-888-AIR-GOOD</a>
+  </div>
+
+  <!-- Mid bar: logo + secondary links -->
+  <div class="mid-bar">
+    <div class="nav-brand"><em>Breezy</em>&thinsp;™</div>
+    <div class="mid-links">
+      <a href="#">Locations <span style="font-size:0.6rem;">▾</span></a>
+      <a href="#">Rewards Club</a>
+      <a href="#signup" class="book-btn">Book Air <span style="font-size:0.6rem;">▾</span></a>
+    </div>
+    <button class="hamburger" id="hamburgerBtn" onclick="toggleMobileMenu()">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+
+  <!-- Main nav -->
+  <div class="main-nav">
+    <div class="location-badge">
+      <div class="location-dot">📍</div>
+      SUMMIT
+    </div>
+    <div class="main-nav-links">
+      <a href="#features">Features</a>
+      <a href="#how">How It Works</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#testimonials">Reviews</a>
+      <a href="#">Promotions</a>
+    </div>
+    <div class="more-wrap">
+      <button class="more-btn" onclick="toggleMore()">
+        More <span class="more-arrow">▼</span>
+      </button>
+      <div class="more-dropdown" id="moreDropdown">
+        <a href="#faq">FAQ</a>
+        <a href="#">Air Menu</a>
+        <a href="#">Careers</a>
+        <a href="#">Directions</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MOBILE MENU OVERLAY -->
+<div class="mobile-menu" id="mobileMenu">
+  <a href="#features" onclick="closeMobile()">Features</a>
+  <a href="#how" onclick="closeMobile()">How It Works</a>
+  <a href="#pricing" onclick="closeMobile()">Pricing</a>
+  <a href="#testimonials" onclick="closeMobile()">Reviews</a>
+  <a href="#">Promotions</a>
+  <div class="mobile-divider"></div>
+  <a href="#faq" onclick="closeMobile()">FAQ</a>
+  <a href="#">Air Menu</a>
+  <a href="#">Careers</a>
+  <a href="#">Directions</a>
+  <div class="mobile-divider"></div>
+  <a href="#">Locations</a>
+  <a href="#">Rewards Club</a>
+  <a href="#signup" onclick="closeMobile()">Book Air</a>
+</div><article id="post-2" class="post-2 page type-page status-publish hentry">
+<header class="header">
+<h1 class="entry-title" itemprop="name">Home</h1> </header>
+<div class="entry-content" itemprop="mainContentOfPage">
+
+<!-- HERO -->
+<section class="hero" id="hero">
+  <div class="badge"><span></span> Now serving 47 countries</div>
+  <h1>Premium <em>Artisanal Air</em>, Delivered&nbsp;Fresh</h1>
+  <p>Hand-curated atmospheric blends sourced from the world&#8217;s finest altitudes. Because you deserve air with <em>character</em>.</p>
+  <div class="hero-buttons">
+    <button class="btn btn-primary" onclick="window.location.href='#'">Start Breathing Better →</button>
+    <button class="btn btn-secondary" onclick="showToast('📺 Playing: \"The Art of Nothing\" (3 min)')">▶ Watch the Story</button>
+  </div>
+  <div class="social-proof">
+    <div class="avatars">
+      <span style="background:#fcd34d">🧑</span>
+      <span style="background:#a5f3fc">👩</span>
+      <span style="background:#c4b5fd">🧔</span>
+      <span style="background:#fda4af">👱</span>
+      <span style="background:#86efac">👩‍🦰</span>
+    </div>
+    <p><strong>12,847</strong> breathers joined this month</p>
+  </div>
+</section>
+
+<!-- LOGOS -->
+<div class="logos">
+  <p>Trusted by industry leaders who breathe</p>
+  <div class="logo-row">
+    <span>Lungify</span>
+    <span>AirBnBreeze</span>
+    <span>OxyCorp</span>
+    <span>NostrilTech</span>
+    <span>GaspWorks</span>
+  </div>
+</div>
+
+<!-- FEATURES -->
+<section class="features" id="features">
+  <div class="container">
+    <div class="section-label">Why Breezy</div>
+    <div class="section-title">Air, but make it ✨ premium ✨</div>
+    <p class="section-sub">We ruined a perfectly free resource by adding a subscription model. You&#8217;re welcome.</p>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#dbeafe;">🏔️</div>
+        <h3>Mountain-Sourced™</h3>
+        <p>Each batch is harvested at peak altitude by our trained Air Sommeliers using proprietary glass jars.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#fce7f3;">🧬</div>
+        <h3>DNA-Matched Blends</h3>
+        <p>Our AI analyzes your 23andMe data to craft a bespoke nitrogen-oxygen ratio. Patent pending.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#d1fae5;">🌿</div>
+        <h3>Carbon-Neutral Carbon</h3>
+        <p>We offset our CO₂ by thinking really hard about trees. It&#8217;s basically the same thing.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#fef3c7;">⚡</div>
+        <h3>Instant Delivery</h3>
+        <p>Our patented &#8220;Open a Window&#8221; technology ensures same-second delivery anywhere on Earth.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#ede9fe;">🔬</div>
+        <h3>Lab-Verified Purity</h3>
+        <p>Every batch is tested by scientists who definitely exist and are not just our intern in a lab coat.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#ffe4e6;">🤝</div>
+        <h3>Community Breathing</h3>
+        <p>Join our Discord of 50k+ breathers. Share tips, techniques, and which nostril you prefer.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how" id="how">
+  <div class="container" style="text-align:center;">
+    <div class="section-label">How It Works</div>
+    <div class="section-title">Three steps to better breathing</div>
+    <p class="section-sub" style="margin:0 auto;">It&#8217;s so simple, you&#8217;ve probably been doing it wrong your whole life.</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Take Our Quiz</h3>
+        <p>Answer 47 deeply personal questions so we can recommend the air you were already breathing.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>We &#8220;Curate&#8221;</h3>
+        <p>Our team spends 0 minutes hand-selecting the exact same air from our warehouse (the sky).</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Breathe &#038; Subscribe</h3>
+        <p>Inhale, exhale, repeat. If you stop, it&#8217;s not our fault but also please don&#8217;t cancel.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing" id="pricing">
+  <div class="container" style="text-align:center;">
+    <div class="section-label">Pricing</div>
+    <div class="section-title">Choose your atmosphere</div>
+    <p class="section-sub" style="margin:0 auto;">All plans include unlimited access to Earth&#8217;s atmosphere (terms apply).</p>
+    <div class="pricing-grid">
+      <div class="price-card">
+        <h3>Casual Breather</h3>
+        <p class="desc">For the air-curious</p>
+        <div class="price"><sup>$</sup>9<sub>/mo</sub></div>
+        <ul>
+          <li>Up to 23,000 breaths/day</li>
+          <li>Standard atmospheric blend</li>
+          <li>Email support (we may reply)</li>
+          <li>1 nostril optimization</li>
+        </ul>
+        <button class="btn btn-secondary" onclick="showToast('🫁 Welcome aboard, Casual Breather!')">Get Started</button>
+      </div>
+      <div class="price-card popular">
+        <div class="popular-tag">Most Popular</div>
+        <h3>Power Inhaler</h3>
+        <p class="desc">For serious oxygen enthusiasts</p>
+        <div class="price"><sup>$</sup>29<sub>/mo</sub></div>
+        <ul>
+          <li>Unlimited breaths</li>
+          <li>3 premium altitude blends</li>
+          <li>Priority support (we will reply)</li>
+          <li>Dual-nostril optimization</li>
+          <li>Monthly Air Report™</li>
+        </ul>
+        <button class="btn btn-primary" onclick="showToast('🎉 Power Inhaler activated! Take a deep breath.')">Start Free Trial</button>
+      </div>
+      <div class="price-card">
+        <h3>Enterprise Lung</h3>
+        <p class="desc">For teams that breathe together</p>
+        <div class="price"><sup>$</sup>99<sub>/mo</sub></div>
+        <ul>
+          <li>Everything in Power Inhaler</li>
+          <li>Dedicated Air Account Manager</li>
+          <li>Custom scent profiles</li>
+          <li>SSO (Single Sniff-On)</li>
+          <li>SLA: 99.9% oxygen uptime</li>
+        </ul>
+        <button class="btn btn-secondary" onclick="showToast('📞 Our Air Sales team will reach out within 1 business breath.')">Contact Sales</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section class="testimonials" id="testimonials">
+  <div class="container">
+    <div class="section-label">Testimonials</div>
+    <div class="section-title" style="color:#fff;">Don&#8217;t take our word for it</div>
+    <p class="section-sub">Real reviews from real breathers. Probably.</p>
+    <div class="test-grid">
+      <div class="test-card">
+        <div class="stars">★★★★★</div>
+        <blockquote>&#8220;I&#8217;ve been breathing for 34 years and never knew I was doing it wrong. Breezy changed everything. My left nostril has never been more optimized.&#8221;</blockquote>
+        <div class="test-author">
+          <div class="test-avatar" style="background:#fcd34d;">🧑</div>
+          <div><strong>Jordan P.</strong><span>VP of Inhaling, Lungify</span></div>
+        </div>
+      </div>
+      <div class="test-card">
+        <div class="stars">★★★★★</div>
+        <blockquote>&#8220;We switched our entire office to Breezy Enterprise. Productivity is the same but morale is confusingly higher. 10/10 would subscribe to air again.&#8221;</blockquote>
+        <div class="test-author">
+          <div class="test-avatar" style="background:#c4b5fd;">👩</div>
+          <div><strong>Sam K.</strong><span>COO, NostrilTech</span></div>
+        </div>
+      </div>
+      <div class="test-card">
+        <div class="stars">★★★★☆</div>
+        <blockquote>&#8220;Four stars because I briefly forgot to breathe and it wasn&#8217;t covered under the warranty. Otherwise, flawless product. The Mountain Blend slaps.&#8221;</blockquote>
+        <div class="test-author">
+          <div class="test-avatar" style="background:#86efac;">🧔</div>
+          <div><strong>Taylor R.</strong><span>Professional Breather</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<section class="stats">
+  <div class="stats-grid">
+    <div class="stat"><h2>12M+</h2><p>Breaths facilitated</p></div>
+    <div class="stat"><h2>99.97%</h2><p>Oxygen uptime SLA</p></div>
+    <div class="stat"><h2>47</h2><p>Countries served</p></div>
+    <div class="stat"><h2>0</h2><p>Customers who stopped breathing*</p></div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq" id="faq">
+  <div class="container" style="text-align:center;">
+    <div class="section-label">FAQ</div>
+    <div class="section-title">Questions we made up</div>
+    <p class="section-sub" style="margin:0 auto;">Transparent answers to the questions literally nobody asked.</p>
+    <div class="faq-list" style="text-align:left;">
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">Isn&#8217;t air already free?</button>
+        <div class="faq-a">Technically, yes. But is <em>free</em> air really the air you want to be breathing? Our air comes with a receipt, and that&#8217;s called peace of mind.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">What if I forget to breathe?</button>
+        <div class="faq-a">That&#8217;s actually a medical concern and not something we can help with. But our Power Inhaler plan does include breathing reminders via push notification every 4 seconds.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">Can I cancel anytime?</button>
+        <div class="faq-a">You can cancel your subscription anytime! You&#8217;ll just need to fill out a 23-page form, attend an exit interview with our Air Retention Specialist, and solve a CAPTCHA that&#8217;s actually a lung capacity test.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">Is this a real product?</button>
+        <div class="faq-a">This is a test site for A/B testing and other experiments. But honestly, at this point in tech, would you really be surprised if someone funded this? We&#8217;ve seen worse on Product Hunt.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">Do you have an API?</button>
+        <div class="faq-a">Yes! Our REST API supports GET /air and POST /exhale endpoints. Rate limited to 12 breaths per minute (we recommend not exceeding this in production or in life).</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- NEWSLETTER CTA -->
+<section class="newsletter" id="signup">
+  <div class="container">
+    <div class="nl-box">
+      <h2>Ready to breathe different?</h2>
+      <p>Join 12,847 breathers. Get weekly air quality insights and exclusive nostril tips.</p>
+      <div class="nl-form">
+        <input type="email" placeholder="you@breathe.io" id="emailInput">
+        <button class="btn btn-primary" onclick="handleSignup()">Subscribe Free →</button>
+      </div>
+      <p style="font-size:0.75rem; color:var(--slate-500); margin-top:14px;">No spam. Just air. Unsubscribe by holding your breath for 60 seconds.</p>
+    </div>
+  </div>
+</section>
+
+<p></p>
+<div class="entry-links"></div>
+</div>
+</article>
+<!-- FOOTER -->
+<footer>
+  <div class="footer-grid">
+    <div class="footer-brand">
+      <div class="nav-brand" style="color:#fff;background:none;-webkit-text-fill-color:unset;"><em>Breezy</em>&thinsp;™</div>
+      <p>Making the world's most abundant resource feel exclusive since 2026. Venture-backed. Carbon-confused.</p>
+    </div>
+    <div>
+      <h4>Product</h4>
+      <ul>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#">API Docs</a></li>
+        <li><a href="#">Changelog</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Company</h4>
+      <ul>
+        <li><a href="#">About (It's Air)</a></li>
+        <li><a href="#">Blog</a></li>
+        <li><a href="#">Careers</a></li>
+        <li><a href="#">Press Kit</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Legal</h4>
+      <ul>
+        <li><a href="#">Privacy Policy</a></li>
+        <li><a href="#">Terms of Service</a></li>
+        <li><a href="#">Air EULA</a></li>
+        <li><a href="#">Nostril Waiver</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    &copy; 2026 Breezy  </div>
+</footer>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3200);
+  }
+
+  function handleSignup() {
+    const email = document.getElementById('emailInput').value;
+    if (email && email.includes('@')) {
+      showToast('🎉 Welcome to Breezy! Check your inbox (or just inhale).');
+      document.getElementById('emailInput').value = '';
+    } else {
+      showToast('⚠️ Please enter a valid email. We need it for... air reasons.');
+    }
+  }
+
+  /*function toggleFaq(btn) {
+    const answer = btn.nextElementSibling;
+    btn.classList.add('open');
+    answer.classList.add('open');
+  }*/
+
+  function toggleFaq(btn) {
+    const isOpen = !btn.classList.contains('open');
+    const openBtn = document.querySelector('.faq-q.open');
+
+    openBtn?.classList.remove('open');
+    openBtn?.nextElementSibling.classList.remove('open');
+
+    btn.classList.toggle('open', isOpen);
+    btn.nextElementSibling.classList.toggle('open', isOpen);
+  }
+
+
+  // MORE dropdown
+  function toggleMore() {
+    const btn = document.querySelector('.more-btn');
+    const dd = document.getElementById('moreDropdown');
+    btn.classList.toggle('open');
+    dd.classList.toggle('open');
+  }
+  // Close MORE on outside click
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.more-wrap')) {
+      document.querySelector('.more-btn')?.classList.remove('open');
+      document.getElementById('moreDropdown')?.classList.remove('open');
+    }
+  });
+
+  // Mobile menu
+  function toggleMobileMenu() {
+    const btn = document.getElementById('hamburgerBtn');
+    const menu = document.getElementById('mobileMenu');
+    btn.classList.toggle('open');
+    menu.classList.toggle('open');
+    document.body.style.overflow = menu.classList.contains('open') ? 'hidden' : '';
+  }
+  function closeMobile() {
+    document.getElementById('hamburgerBtn').classList.remove('open');
+    document.getElementById('mobileMenu').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  // Smooth scroll for nav links
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      const target = document.querySelector(a.getAttribute('href'));
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+</script>
+
+</body>
+</html>

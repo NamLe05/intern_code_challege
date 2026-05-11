@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p /Users/nam/Documents/intern_code_challege/Part-2/api)"
+    ],
+    "additionalDirectories": [
+      "/Users/nam/Documents/intern_code_challege/Part-2"
+    ]
+  }
+}
