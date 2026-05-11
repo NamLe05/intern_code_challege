@@ -1,5 +1,11 @@
 # Breezy AI-Powered Chatbot + Air Blend Quiz
 
+## Submission contents
+
+- Feature code in this folder (`Part-2/`)
+- AI transcript: `transcript.md` in this folder
+- Process write-up for both Part 1 and Part 2: `PROCESS.md` in the project root
+
 ## What I built and why
 
 A floating chat widget in the bottom-right of the Breezy site. Users can chat with the assistant in the site's voice or take a 5-question quiz that generates a personalized Air Blend (name, nitrogen-oxygen ratio, tasting notes, recommended pricing tier). Once a user has a blend, the chatbot knows about it and can reference it in conversation.

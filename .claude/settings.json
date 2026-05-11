@@ -2,12 +2,19 @@
   "permissions": {
     "allow": [
       "Bash(mkdir -p /Users/nam/Documents/intern_code_challege/Part-2/api)",
-      "Bash(chmod +x /Users/nam/Documents/intern_code_challege/Part-2/test.sh)",
-      "Bash(curl -sS -o /dev/null -w \"%{http_code}\\\\n\" -X POST http://localhost:3000/api/chat -H 'Content-Type: application/json' -d '{\"mode\":\"chat\",\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}]}' --max-time 15)",
-      "Bash(./test.sh)"
+      "Bash(lsof -i:3000 -i:3001 -i:3002 -i:3003)",
+      "Bash(lsof -ti:3000)",
+      "Bash(xargs kill -9)",
+      "Bash(lsof -i:3000)",
+      "Bash(awk -F= '/GEMINI_API_KEY/ { *)",
+      "Bash(vercel env *)",
+      "Bash(./test.sh)",
+      "Bash(mv \"/Users/nam/Desktop/Screenshot 2026-05-11 at 2.12.06 AM.png\" /Users/nam/Documents/intern_code_challege/Part-1/part1-transcript.png && ls -la /Users/nam/Documents/intern_code_challege/Part-1/)",
+      "Bash(cp *2.12.06* /Users/nam/Documents/intern_code_challege/Part-1/part1-transcript.png && ls -la /Users/nam/Documents/intern_code_challege/Part-1/)"
     ],
     "additionalDirectories": [
-      "/Users/nam/Documents/intern_code_challege/Part-2"
+      "/Users/nam/Documents/intern_code_challege/Part-2",
+      "/Users/nam/Desktop"
     ]
   }
 }
